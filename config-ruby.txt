@@ -134,8 +134,8 @@ _G.FishItConfig = _G.FishItConfig or {
             "Ares Rod",
         },
         ["Location Rods"] = {
-            ["Fisherman Island"] = {"Starter Rod"},
-            ["Kohana Volcano"] = {"Grass Rod", "Midnight Rod"},
+            ["Tropical Grove"] = {"Starter Rod"},
+            ["Tropical Grove"] = {"Grass Rod", "Midnight Rod"},
             ["Tropical Grove"] = {"Astral Rod"},
             ["Treasure Room"] = {"Element Rod", "Ghostfinn Rod", "Angler Rod", "Ares Rod"},
         },
@@ -153,3 +153,4 @@ _G.FishItConfig = _G.FishItConfig or {
     ["EXIT_MAP_IF_DISCONNECT"] = false,
 
 }
+
