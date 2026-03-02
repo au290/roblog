@@ -40,3 +40,6 @@ TARGET_ITEMS = [
     "Queen Crab", "Panther Eel", "King Crab",
     "Depthseeker Ray", "Cryoshade Glider"
 ]
+
+WEB_USERNAME = os.getenv('WEB_USERNAME', 'admin')
+WEB_PASSWORD = os.getenv('WEB_PASSWORD', 'admin')

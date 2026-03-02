@@ -8,6 +8,8 @@ import asyncio
 from datetime import datetime
 from src import config
 from src import utils
+from src import state
+import copy
 
 logger = logging.getLogger('fleet_monitor')
 
@@ -86,7 +88,7 @@ async def update_status_webhook():
         if os.path.exists(config.MSG_ID_FILE): os.remove(config.MSG_ID_FILE)
 
 async def perform_sync():
-    """Fetch registered messages, parse contents, and build fleet_state."""
+    """Fetch registered messages, parse contents, and update RAM."""
     global FETCH_COUNT, LAST_FETCH_TIME
     registry = get_registry()
     channel = bot.get_channel(config.CHANNEL_ID)
@@ -95,7 +97,8 @@ async def perform_sync():
         logger.error(f"Could not find channel with ID {config.CHANNEL_ID}")
         return None
 
-    fleet_state = {
+    # Create a temporary dictionary for the new data
+    new_state = {
         "metadata": {
             "last_sync_iso": datetime.now().isoformat(),
             "last_sync_unix": int(time.time()),
@@ -127,7 +130,7 @@ async def perform_sync():
             sys_cpu = re.search(r"CPU:\s+([\d.]+%?)", content)
             sys_mem = re.search(r"Memory:\s+([\d./\sA-Z]+GB\s+\([\d.]+%?\s+used\))", content)
 
-            fleet_state["system_health"][ps_name] = {
+            new_state["system_health"][ps_name] = {
                 "cpu_usage": sys_cpu.group(1) if sys_cpu else "0%",
                 "memory_details": sys_mem.group(1) if sys_mem else "N/A",
                 "last_reported_unix": last_msg_ts,
@@ -144,15 +147,15 @@ async def perform_sync():
             )
             
             players_found = re.findall(pattern, content, re.MULTILINE)
-            fleet_state["ps_groups"][ps_name] = []
+            new_state["ps_groups"][ps_name] = []
 
             for p in players_found:
                 raw_status = p[5]
                 is_online = (raw_status == "IN-GAME" and not is_stale)
                 if is_online:
-                    fleet_state["metadata"]["total_online_count"] += 1
+                    new_state["metadata"]["total_online_count"] += 1
 
-                fleet_state["ps_groups"][ps_name].append({
+                new_state["ps_groups"][ps_name].append({
                     "player_id": p[0], "username": p[1],
                     "api_status": "ONLINE" if is_online else "OFFLINE",
                     "raw_status": raw_status, "is_active": is_online, 
@@ -163,9 +166,11 @@ async def perform_sync():
         except Exception as e:
             logger.error(f"Error syncing {ps_name}: {e}")
 
-    # Safely save the scraped data
-    utils.save_json_safe(config.FLEET_DATA_FILE, fleet_state)
-    return fleet_state
+    # INSTANT RAM UPDATE: Safely lock and update the global state instead of saving to JSON
+    async with state.state_lock:
+        state.fleet_state.update(new_state)
+        
+    return True
 
 def create_discord_embed(fleet_state):
     embed = discord.Embed(title="❄️ Winter Fleet Live Monitor", color=0x3498db)
@@ -208,8 +213,11 @@ async def listcommand(ctx):
 @bot.command()
 @is_authorized()
 async def dashboard(ctx):
-    data = utils.load_json_safe(config.FLEET_DATA_FILE)
-    if not data: 
+    # INSTANT RAM READ: No file loading needed!
+    async with state.state_lock:
+        data = copy.deepcopy(state.fleet_state)
+        
+    if not data.get("ps_groups"): 
         return await ctx.send("🔄 Syncing... Please wait a moment.")
     await ctx.send(embed=create_discord_embed(data))
 

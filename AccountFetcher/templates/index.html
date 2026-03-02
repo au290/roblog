@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WinterFleet Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #f4f4f5; }
+        .bg-grid {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-size: 50px 50px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            z-index: -1; pointer-events: none;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        
+        /* Hide the default summary arrow */
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen">
+
+    <div class="bg-grid"></div>
+
+    <div class="max-w-7xl mx-auto">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center pb-8 mb-8 border-b border-white/10">
+            <div class="flex items-center gap-3 mb-4 md:mb-0">
+                <div class="bg-white text-black font-bold p-2 rounded-lg leading-none tracking-tight">WH</div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                        Winter <span class="text-gray-400 font-medium">Fleet</span>
+                    </h1>
+                    <p class="text-sm text-gray-500 mt-1">Real-time Roblox Analytics</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 bg-green-500/10 border border-green-500/20 px-4 py-2 rounded-full">
+                <span class="relative flex h-2.5 w-2.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                </span>
+                <span class="text-sm font-medium text-green-400"><span id="online-count">0 / 0</span> Bots Online</span>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            <div class="bg-[#121214] p-5 rounded-2xl border border-white/5 shadow-lg">
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Catch Rate</p>
+                <p class="text-2xl font-bold text-white" id="stat-fph">0 <span class="text-sm font-normal text-gray-500">FPH</span></p>
+                <p class="text-xs text-blue-400 mt-1" id="stat-fpm">0.0 FPM</p>
+            </div>
+            <div class="bg-[#121214] p-5 rounded-2xl border border-white/5 shadow-lg">
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Total Evo</p>
+                <p class="text-2xl font-bold text-white mt-1" id="stat-evo">0</p>
+            </div>
+            <div class="bg-[#121214] p-5 rounded-2xl border border-white/5 shadow-lg">
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Rare Fish</p>
+                <p class="text-2xl font-bold text-white mt-1" id="stat-sctb">0</p>
+            </div>
+            <div class="bg-[#121214] p-5 rounded-2xl border border-white/5 shadow-lg">
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Saldo Rp</p>
+                <p class="text-2xl font-bold text-white mt-1" id="stat-rp">Rp 0</p>
+            </div>
+            <div class="bg-[#121214] p-5 rounded-2xl border border-white/5 shadow-lg">
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">YesCaptcha</p>
+                <p class="text-2xl font-bold text-white mt-1" id="stat-yes">0 <span class="text-sm font-normal text-gray-500">pts</span></p>
+            </div>
+            <div class="bg-[#121214] p-5 rounded-2xl border border-white/5 shadow-lg">
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Health</p>
+                <p class="text-2xl font-bold text-green-400 mt-1" id="stat-captcha">0%</p>
+                <p class="text-xs text-gray-500 mt-1" id="stat-captcha-detail">0 / 0</p>
+            </div>
+        </div>
+
+        <div class="bg-[#121214] rounded-2xl p-5 border border-white/5 shadow-xl mb-8">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                📈 Fleet Analytics <span class="text-xs font-normal text-gray-500 ml-2">(Updates every 10m)</span>
+            </h2>
+            <div class="relative h-64 w-full">
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+
+        <div id="server-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
+            <p class="text-gray-500 animate-pulse col-span-full text-center py-20 font-medium">Synchronizing fleet data...</p>
+        </div>
+    </div>
+
+    <script>
+        function formatNumber(num) { return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+        function timeAgo(unixSeconds) {
+            if (!unixSeconds) return 'Unknown';
+            const diff = Math.floor(Date.now() / 1000) - unixSeconds;
+            if (diff < 60) return `${diff}s ago`;
+            if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+            return `${Math.floor(diff / 86400)}d ago`;
+        }
+
+        // --- CHART INITIALIZATION ---
+        let fleetChart;
+        function initOrUpdateChart(historyData) {
+            if (!historyData || historyData.length === 0) return;
+
+            const labels = historyData.map(d => d.time);
+            const sctbData = historyData.map(d => d.sctb);
+            const fpmData = historyData.map(d => d.fpm);
+            const onlineData = historyData.map(d => d.online);
+
+            if (!fleetChart) {
+                const ctx = document.getElementById('historyChart').getContext('2d');
+                Chart.defaults.color = '#71717a';
+                fleetChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'SC/TB Count (🐟)', data: sctbData, borderColor: '#2dd4bf', backgroundColor: 'rgba(45, 212, 191, 0.1)', yAxisID: 'y', fill: true, tension: 0.3 },
+                            { label: 'Catch Rate (FPM)', data: fpmData, borderColor: '#60a5fa', borderDash: [5, 5], yAxisID: 'y1', tension: 0.3 },
+                            { label: 'Online Bots', type: 'bar', data: onlineData, backgroundColor: 'rgba(74, 222, 128, 0.2)', borderColor: '#4ade80', borderWidth: 1, yAxisID: 'y2', barThickness: 10 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            x: { grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                            y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'SC Count' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                            y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'FPM' }, grid: { drawOnChartArea: false } },
+                            y2: { type: 'linear', display: false, min: 0 }
+                        },
+                        plugins: { legend: { position: 'top' } }
+                    }
+                });
+            } else {
+                fleetChart.data.labels = labels;
+                fleetChart.data.datasets[0].data = sctbData;
+                fleetChart.data.datasets[1].data = fpmData;
+                fleetChart.data.datasets[2].data = onlineData;
+                fleetChart.update();
+            }
+        }
+
+        async function fetchLiveState() {
+            try {
+                const response = await fetch('/api/state');
+                const data = await response.json();
+                
+                // --- NEW: Calculate Global Online / Total Accounts dynamically ---
+                let totalGlobalAccounts = 0;
+                let onlineGlobalAccounts = 0;
+                
+                for (const players of Object.values(data.ps_groups || {})) {
+                    totalGlobalAccounts += players.length;
+                    onlineGlobalAccounts += players.filter(p => p.is_active).length;
+                }
+                
+                // Update Global Header with the fraction
+                document.getElementById('online-count').innerText = `${onlineGlobalAccounts} / ${totalGlobalAccounts}`;
+
+                if (data.global_stats) {
+                    const stats = data.global_stats;
+                    document.getElementById('stat-fph').innerHTML = `${stats.globalFPH || 0} <span class="text-sm font-normal text-gray-500">FPH</span>`;
+                    document.getElementById('stat-fpm').innerText = `${stats.globalFPM || '0.0'} FPM`;
+                    document.getElementById('stat-evo').innerText = formatNumber(stats.totalEvo || 0);
+                    document.getElementById('stat-sctb').innerText = formatNumber(stats.totalSctb || 0);
+                    document.getElementById('stat-rp').innerText = `Rp ${formatNumber(stats.saldoRp || 0)}`;
+                    document.getElementById('stat-yes').innerHTML = `${formatNumber(stats.poinYes || 0)} <span class="text-sm font-normal text-gray-500">pts</span>`;
+                    
+                    const cap = stats.captchaHealth || {};
+                    document.getElementById('stat-captcha').innerText = `${cap.rate || '0.0'}%`;
+                    document.getElementById('stat-captcha-detail').innerText = `${cap.success || 0} Success | ${cap.failed || 0} Failed`;
+                }
+
+                if (data.history) initOrUpdateChart(data.history);
+
+                const grid = document.getElementById('server-grid');
+                if (grid.innerHTML.includes('Synchronizing')) grid.innerHTML = ''; 
+
+                for (const [psName, players] of Object.entries(data.ps_groups || {})) {
+                    const health = data.system_health[psName] || {};
+                    const lastSeenText = timeAgo(health.last_reported_unix);
+                    
+                    const sStats = (data.global_stats && data.global_stats.serverStats && data.global_stats.serverStats[psName]) || { fpm: '0.0', fph: '0', evo: 0, sctb: 0 };
+                    
+                    const totalBots = players.length;
+                    const onlineBots = players.filter(p => p.is_active).length;
+                    
+                    const exsumHtml = `
+                        <div class="flex flex-col"><span class="font-bold text-white">${onlineBots}/${totalBots}</span><span>Bots</span></div>
+                        <div class="flex flex-col"><span class="font-bold text-blue-400">${sStats.fpm}</span><span>FPM</span></div>
+                        <div class="flex flex-col"><span class="font-bold text-teal-400">${formatNumber(sStats.sctb)}</span><span>SC/TB</span></div>
+                        <div class="flex flex-col"><span class="font-bold text-purple-400">${formatNumber(sStats.evo)}</span><span>Evo</span></div>
+                        <div class="flex flex-col"><span class="font-bold text-gray-300">${health.cpu_usage || '0%'}</span><span>CPU</span></div>
+                    `;
+
+                    const serverStatsText = `
+                        <div class="bg-black/30 rounded-xl p-3 mb-2 border border-white/5">
+                            <div class="flex justify-between items-center mb-1 pb-1 border-b border-white/5 text-sm">
+                                <span class="font-mono text-blue-400">${sStats.fpm} FPM | ${sStats.fph} FPH</span>
+                                <span class="text-xs text-gray-500">${lastSeenText}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-sm font-medium">
+                                <span class="flex items-center gap-1.5">💎 ${formatNumber(sStats.evo)}</span>
+                                <span class="flex items-center gap-1.5">🐟 ${formatNumber(sStats.sctb)}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    let playerHtml = '';
+                    players.forEach(p => {
+                        const isOnline = p.is_active;
+                        const statusColor = isOnline ? 'text-green-400' : 'text-zinc-500';
+                        const dotColor = isOnline ? 'bg-green-500' : 'bg-zinc-600';
+                        playerHtml += `
+                            <div class="flex flex-col py-2 border-t border-white/5 hover:bg-white/[0.02] transition-colors rounded px-2 -mx-2">
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-1.5 h-1.5 rounded-full ${dotColor}"></div>
+                                        <span class="text-sm font-medium text-gray-200">${p.username}</span>
+                                    </div>
+                                    <span class="text-[10px] uppercase tracking-wider font-bold ${statusColor}">${p.api_status}</span>
+                                </div>
+                                <div class="flex justify-between items-center mt-1 text-[11px] text-gray-500 font-mono">
+                                    <span>⏱️ ${p.session_uptime || '00:00:00'}</span>
+                                    <span>${p.load_cpu || '0%'} • ${p.load_ram || '0 MB'}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    let existingCard = document.getElementById(`card-${psName}`);
+                    if (!existingCard) {
+                        // NEW: Removed the "open" attribute so cards are collapsed by default
+                        grid.innerHTML += `
+                            <details id="card-${psName}" class="group bg-[#121214] rounded-2xl border border-white/5 shadow-xl hover:border-white/10 transition-colors h-fit">
+                                <summary class="p-5 cursor-pointer outline-none select-none">
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex items-center gap-3">
+                                            <div class="bg-white/5 p-2 rounded-lg border border-white/5 text-sm">🖥️</div>
+                                            <h2 class="text-lg font-semibold text-white tracking-tight">${psName}</h2>
+                                        </div>
+                                        <svg class="w-5 h-5 text-gray-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                    </div>
+                                    <div id="exsum-${psName}" class="mt-4 grid grid-cols-5 gap-1 text-center text-[10px] text-gray-500 group-open:hidden border-t border-white/5 pt-3">
+                                        ${exsumHtml}
+                                    </div>
+                                </summary>
+                                <div class="px-5 pb-5 pt-0 mt-[-10px]">
+                                    <div id="stats-${psName}">${serverStatsText}</div>
+                                    <div class="flex justify-between items-center text-[10px] text-gray-500 mb-3 px-1">
+                                        <span id="sys-${psName}">CPU: ${health.cpu_usage || 'N/A'} | RAM: ${health.memory_details || 'N/A'}</span>
+                                    </div>
+                                    <div id="players-${psName}" class="max-h-60 overflow-y-auto pr-2">
+                                        ${playerHtml || '<p class="text-gray-600 text-sm text-center py-4">No bots registered.</p>'}
+                                    </div>
+                                </div>
+                            </details>
+                        `;
+                    } else {
+                        document.getElementById(`exsum-${psName}`).innerHTML = exsumHtml;
+                        document.getElementById(`stats-${psName}`).innerHTML = serverStatsText;
+                        document.getElementById(`sys-${psName}`).innerHTML = `CPU: ${health.cpu_usage || 'N/A'} | RAM: ${health.memory_details || 'N/A'}`;
+                        document.getElementById(`players-${psName}`).innerHTML = playerHtml || '<p class="text-gray-600 text-sm text-center py-4">No bots registered.</p>';
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch state:", error);
+            }
+        }
+
+        fetchLiveState();
+        setInterval(fetchLiveState, 5000);
+    </script>
+</body>
+</html>

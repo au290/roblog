@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from src import config
 from src import utils
 from src.sync import sync_accounts
+from src import state
+import copy
 
 logger = logging.getLogger('fleet_monitor')
 
@@ -29,9 +31,12 @@ async def fetch_all_data(api_client):
     """Gathers all player data from Wintercode and calculates performance."""
     global global_perf_history, server_perf_history
     
-    fleet_data = utils.load_json_safe(config.FLEET_DATA_FILE)
-    if not fleet_data:
-        logger.warning(f"⚠️ Fleet data '{config.FLEET_DATA_FILE}' is empty or missing.")
+    # INSTANT RAM READ: Grab a safe copy of the current state
+    async with state.state_lock:
+        fleet_data = copy.deepcopy(state.fleet_state)
+        
+    if not fleet_data.get("ps_groups"):
+        logger.warning("⚠️ Fleet state is empty in memory. Waiting for bot to sync...")
         return None
         
     player_mapping = {}
@@ -92,6 +97,10 @@ async def fetch_all_data(api_client):
     total_evo, total_sctb, online_real, offline_real = 0, 0, 0, 0
     global_total_caught = 0
     server_totals = {}
+    
+    # --- NEW: TRACK ITEMS PER SERVER ---
+    server_evo_tracker = {}
+    server_sctb_tracker = {}
     active_quest_count = 0
     quest_summary = {}
     rod_stats = {}
@@ -143,13 +152,22 @@ async def fetch_all_data(api_client):
             
             # Safe Inventory Parsing
             inventory = utils.safe_dict(profile.get("Inventory"))
+            
+            # Initialize server item trackers if they don't exist yet
+            if server_name not in server_evo_tracker: server_evo_tracker[server_name] = 0
+            if server_name not in server_sctb_tracker: server_sctb_tracker[server_name] = 0
+            
             for item in utils.safe_list(inventory.get("Enchant Stones")):
                 if isinstance(item, dict) and item.get("Name") == "Evolved Enchant Stone":
-                    total_evo += item.get("Quantity", 1)
+                    qty = item.get("Quantity", 1)
+                    total_evo += qty
+                    server_evo_tracker[server_name] += qty  # Add to specific server
                     
             for item in utils.safe_list(inventory.get("Fish")):
                 if isinstance(item, dict) and (item.get("Name") in config.TARGET_ITEMS or item.get("Type") in config.TARGET_ITEMS):
-                    total_sctb += item.get("Quantity", 1)
+                    qty = item.get("Quantity", 1)
+                    total_sctb += qty
+                    server_sctb_tracker[server_name] += qty  # Add to specific server
         else:
             offline_real += 1
 
@@ -183,6 +201,10 @@ async def fetch_all_data(api_client):
                 
         hist["lastTotalCaught"] = current_total
         hist["lastCheckTime"] = now
+        
+        # --- NEW: INJECT ITEM STATS FOR THE WEB UI ---
+        hist["evo"] = server_evo_tracker.get(s_name, 0)
+        hist["sctb"] = server_sctb_tracker.get(s_name, 0)
 
     rate = "0.0"
     if (total_success + total_failed) > 0:
@@ -215,9 +237,33 @@ async def update_monitor(api_client):
     if not data:
         return
 
-    # Using WITA timezone (UTC+8)
-    wita_time = datetime.utcnow() + timedelta(hours=8)
-    timestamp = wita_time.strftime("%d/%m/%Y, %H:%M:%S")
+   # --- NEW: SAVE TO RAM FOR THE WEB DASHBOARD ---
+    async with state.state_lock:
+        state.fleet_state["global_stats"] = data
+        
+        # --- NEW: LOG HISTORY FOR THE GRAPH ---
+        if "history" not in state.fleet_state:
+            state.fleet_state["history"] = []
+            
+        # Using WITA timezone (UTC+8)
+        current_time = datetime.utcnow() + timedelta(hours=8)
+        time_str = current_time.strftime("%H:%M")
+        
+        # Grab current online count from metadata
+        online_count = state.fleet_state.get("metadata", {}).get("total_online_count", 0)
+        
+        # Append the current snapshot to history
+        state.fleet_state["history"].append({
+            "time": time_str,
+            "fpm": float(data.get("globalFPM", 0)),
+            "sctb": int(data.get("totalSctb", 0)),
+            "online": int(online_count)
+        })
+        
+        # Keep only the last 72 data points (12 hours of data if running every 10 mins)
+        if len(state.fleet_state["history"]) > 72:
+            state.fleet_state["history"].pop(0)
+    # ----------------------------------------------
     
     # Format Rod Stats
     rod_text = ""
