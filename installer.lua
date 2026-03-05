@@ -2,7 +2,7 @@
 -- MULTI-SELECT SMART UPDATE SCRIPT (TERMUX/ROOT FIX)
 -- ==========================================
 
-local WEB_URL = "https://api.amer.web.id/ronpig" 
+local WEB_URL = "https://api.amer.web.id/ronpig/" 
 
 -- Helper: Execute a command and get the output
 local function get_command_output(cmd)
@@ -135,4 +135,5 @@ end
 
 
 main()
+
 
