@@ -85,7 +85,16 @@ function main()
             print("\n----------------------------------------")
             print("⬇️ Downloading: " .. display_name)
             
-            local download_url = WEB_URL .. apk_name
+            -- Safely construct the URL to prevent double-slashes or duplicate domains
+            local download_url = apk_name
+            if not string.match(apk_name, "^http") then
+                -- Strip leading slash from apk_name if it exists, to prevent //
+                local safe_apk_name = apk_name:gsub("^/", "")
+                download_url = WEB_URL .. safe_apk_name
+            end
+            
+            -- Print the exact URL so we can spot encoding or path errors instantly
+            print("   🔗 DEBUG URL: " .. download_url)
             
             -- 1. Download to local Termux folder where curl has permissions
             local curl_cmd = 'curl -f -# -L -o "' .. TEMP_APK .. '" "' .. download_url .. '"'
@@ -126,3 +135,4 @@ end
 
 
 main()
+
