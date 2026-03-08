@@ -152,4 +152,3 @@ _G.FishItConfig = _G.FishItConfig or {
 
 }
 
-loadstring(game:HttpGet("https://raw.githubusercontent.com/au290/roblog/refs/heads/main/trackstats.lua"))() 
