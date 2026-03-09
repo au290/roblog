@@ -151,7 +151,3 @@ _G.FishItConfig = _G.FishItConfig or {
     ["EXIT_MAP_IF_DISCONNECT"] = false,
 
 }
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/au290/roblog/refs/heads/main/trackstat.lua"))()
-
-
