@@ -38,6 +38,7 @@ _G.FishItConfig = _G.FishItConfig or {
     ["Doing Quest"] = {
         ["Auto Ghostfinn Rod"] = true,
         ["Auto Element Rod"] = false,
+        ["Auto Element Rod 2"] = true,
         ["Unlock Ancient Ruin"] = false,
         ["Allowed Sacrifice"] = {
                 "Ghost Shark",
@@ -100,7 +101,7 @@ _G.FishItConfig = _G.FishItConfig or {
         ["Roll Enchant"] = false,
         ["Evolved Roll Enchant"] = false,
         ["Enchant List"] = {
-            "Cursed I",
+            "Strom",
         },
         ["Second Enchant"] = true,
         ["Allowed Sacrifice"] = {
