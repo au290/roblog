@@ -1,0 +1,129 @@
+getgenv().Config = { Dashboard = { Enabled = false, GroupName = “vps1”,
+},
+
+    BabyFarm = true,
+
+    PetFarm = {
+        Enabled = true,
+        FarmEggs = true,
+        BuyEggs = true,
+        EggTypes = {"crystal_egg"},
+        BuyEggType = "crystal_egg",
+        MaxPets = 1,
+        FarmUntilFullGrown = false,
+        PrioritizeFriendship = true,
+        SelectiveFarm = false,
+        SelectedPetTypes = {},
+    },
+
+    EventFarm = {
+        CandyCliff = false,
+    },
+
+    AutoTrade = {
+        Enabled = false,
+        AutoAcceptTrades = false,
+        AutoLeaveAfterTrades = false,
+        Usernames = {},
+        TradeMode = "all",
+        Categories = {},
+        Items = {},
+        ItemCounts = {},
+        PetTypes = {},
+        Ages = {},
+    },
+
+    AutoNeon = {
+        Enabled = false,
+        MakeMega = false,
+        NeonAll = true,
+        SelectedPets = {},
+        MaxPerType = {},
+    },
+
+    AutoPotion = {
+        Enabled = false,
+        SelectedPets = {"lny_2026_fire_foal"},
+    },
+
+    AutoBuy = {
+        Enabled = false,
+        SelectedItems = {},
+        BuyAmounts = {},
+    },
+
+    AutoPay = {
+        Enabled = false,
+        TargetPlayer = "",
+    },
+
+    AutoOpen = {
+        Enabled = false,
+        Items = {},
+    },
+
+    AutoRecycle = {
+        Enabled = false,
+        RarityFilter = {{
+            common = true,
+            uncommon = true,
+            rare = false,
+            ultra_rare = false,
+            legendary = false
+        }},
+        AgeFilter = {},
+        ExcludedPets = {},
+    },
+
+    IdleProgression = {
+        Enabled = false,
+        SelectedPets = {"crystal_egg"},
+        ExcludedPets = {},
+        PriorityOrder = {},
+    },
+
+    AccountManager = {
+        Enabled = false,
+        Tool = "",
+        Yummy = {
+            Action = "completed",
+            Reason = "Done",
+        },
+        FarmSync = {
+            Action = "completed",
+            FromFolderId = "",
+            ToFolderId = "",
+            ChangeWithoutReplacement = false,
+            ConfigId = nil,
+        },
+        Triggers = {
+            AfterTradeComplete = false,
+            MinBucks = 0,
+            MinPotions = 0,
+        },
+    },
+
+    Settings = {
+        AutoShowUI = false,
+        ShowOverlay = true,
+        ReduceGraphics = true,
+        FPSCap = 3,
+        LureId = "ice_dimension_2025_ice_soup_bait"
+    },
+
+    Webhook = {
+        Enabled = false,
+        URL = "https://discord.com/api/",
+        PetUnlock = {
+            Enabled = false,
+            URL = "https://discord.com/api/webhooks/",
+            FilterRarities = {"legendary","ultra_rare"},
+        },
+    },
+
+    TaskExclusion = {
+        Enabled = false,
+        ExcludedTasks = {},
+    },
+
+};
